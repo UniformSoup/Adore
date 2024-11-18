@@ -1,1 +1,1 @@
-# Adore Third-Party Libraries
+# Adore Dependencies

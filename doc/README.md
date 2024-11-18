@@ -1,1 +1,1 @@
-# Adore Docs
+# Adore Docs
