@@ -1,0 +1,8 @@
+set(GLFW_BUILD_DOCS OFF CACHE BOOL)
+set(GLFW_INSTALL OFF CACHE BOOL)
+set(GLFW_LIBRARY_TYPE "STATIC" CACHE STRING)
+set(GLFW_USE_WAYLAND ON CACHE BOOL)
+
+add_subdirectory(glfw)
+add_subdirectory(glm INTERFACE)
+target_include_directories(glm INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
