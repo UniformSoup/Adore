@@ -1,0 +1,8 @@
+#ifndef ADORE_VERSION_H
+#define ADORE_VERSION_H
+
+#define ADORE_VERSION_MAJOR 0
+#define ADORE_VERSION_MINOR 1
+#define ADORE_VERSION_PATCH 0
+
+#endif
