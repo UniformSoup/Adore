@@ -26,11 +26,8 @@ option(ADORE_BUILD_TESTS "Build test programs" OFF)
 option(ADORE_BUILD_EXAMPLES "Build examples" OFF)
 option(ADORE_BUILD_DOCS "Build documentation" ON)
 
-# Set the C++ standard
-set(CMAKE_CXX_STANDARD 17)
-
 # Generate Version Header:
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/Adore/version.h.in ${CMAKE_CURRENT_SOURCE_DIR}/include/Adore/version.h @ONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/Adore/version.hpp.in ${CMAKE_CURRENT_SOURCE_DIR}/include/Adore/version.hpp @ONLY)
 
 # Determine LTO ON/OFF
 include(CheckIPOSupported)
@@ -38,9 +35,9 @@ check_ipo_supported(RESULT LTO_SUPPORT OUTPUT LTO_ERROR)
 set(ADORE_LTO_ENABLED FALSE CACHE BOOL "Is LTO Enabled?")
 
 if(LTO_SUPPORT)
-    if (CMAKE_BUILD_TYPE STREQUAL "Release")
+    if (CMAKE_BUILD_TYPE STREQUAL "RELEASE")
         message(STATUS "LTO is supported and will be enabled by default.")
-        set(ADORE_LTO_ENABLED TRUE CACHE BOOL)
+        set(ADORE_LTO_ENABLED TRUE)
     endif()
 else()
     message(WARNING "LTO is not supported: ${LTO_ERROR}")
