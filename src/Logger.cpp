@@ -6,11 +6,20 @@
 
 namespace Adore
 {
+#ifdef DEBUG
     static std::string const sevstrings[] = {"INFO", "WARN", "ERROR" };
     static std::string const sevcolors[] = {"\033[1;96m", "\033[1;93m", "\033[1;91m"};
     static std::string const reset = "\033[0m";
     static std::string const underline = "\033[4m";
     static std::string const purple = "\033[1;95m";
+#else
+    static std::string const sevstrings[] = {"INFO", "WARN", "ERROR" };
+    static std::string const sevcolors[] = {"", "", ""};
+    static std::string const reset = "";
+    static std::string const underline = "";
+    static std::string const purple = "";
+#endif
+
     static std::mutex mutex;
 
     void log_message(std::vector<std::string> const& tags,
@@ -20,7 +29,6 @@ namespace Adore
 #ifdef DEBUG
         std::ostream out(std::clog.rdbuf());
 #else
-        if (level != Severity::ERROR)   return;
         std::ofstream out("log.txt", std::ios::out | std::ios::app);
         // std::ostream out(outfile);
 #endif
@@ -48,6 +56,9 @@ namespace Adore
 
     void log(Severity const& level, std::string const& message)
     {
+#ifndef DEBUG
+        if (level != Severity::ERROR)   return;
+#endif
         log_message
         (
             {
