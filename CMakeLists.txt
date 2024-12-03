@@ -27,7 +27,7 @@ option(ADORE_BUILD_EXAMPLES "Build examples" OFF)
 option(ADORE_BUILD_DOCS "Build documentation" ON)
 
 # Generate Version Header:
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/Adore/version.hpp.in ${CMAKE_CURRENT_SOURCE_DIR}/include/Adore/version.hpp @ONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/Adore/Version.hpp.in ${CMAKE_CURRENT_SOURCE_DIR}/include/Adore/Version.hpp @ONLY)
 
 # Determine LTO ON/OFF
 include(CheckIPOSupported)
