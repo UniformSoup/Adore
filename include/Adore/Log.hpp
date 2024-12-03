@@ -3,6 +3,8 @@
 #include <mutex>
 #include <string>
 
+#define ADORE_LOG(level, msg) Adore::log(Adore::Severity::level, msg);
+
 namespace Adore
 {
     enum Severity { INFO = 0, WARN = 1, ERROR = 2 };

@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include <export.h>
-#include "Logger.hpp"
-
-#define ADORE_LOG(level, msg) Adore::log(Adore::Severity::level, msg);
+#include "Log.hpp"
+#include "Context.hpp"
+#include "Window.hpp"
+#include "Version.hpp"
