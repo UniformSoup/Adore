@@ -5,7 +5,7 @@
 #include <Adore/API.hpp>
 #include <Adore/Context.hpp>
 
-#include "export.hpp"
+#include "Export.hpp"
 
 namespace Adore
 {
