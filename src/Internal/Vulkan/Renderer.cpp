@@ -101,6 +101,8 @@ VulkanRenderer::VulkanRenderer(std::shared_ptr<Adore::Window>& win)
 VulkanRenderer::~VulkanRenderer()
 {
     auto window = static_cast<VulkanWindow*>(m_win.get());
+    
+    vkQueueWaitIdle(window->queues().graphics);
 
     vkDestroyFence(window->device(), m_inFlight, nullptr);
 

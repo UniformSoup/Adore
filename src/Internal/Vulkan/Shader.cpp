@@ -193,6 +193,7 @@ VulkanShader::VulkanShader(std::shared_ptr<Adore::Renderer>& renderer,
 VulkanShader::~VulkanShader()
 {
     VulkanWindow * window = static_cast<VulkanWindow*>(m_renderer->window().get());
+    vkQueueWaitIdle(window->queues().graphics);
     vkDestroyPipeline(window->device(), m_pipeline, nullptr);
     vkDestroyPipelineLayout(window->device(), m_pipelineLayout, nullptr);
 }
