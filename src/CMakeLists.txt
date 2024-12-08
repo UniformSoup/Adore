@@ -3,11 +3,15 @@ include(GenerateExportHeader)
 # Collect source files
 set(SOURCES
     Log.cpp
-    Internal/Log.cpp
     Context.cpp
     Window.cpp
-    Internal/Vulkan/VulkanContext.cpp
-    Internal/Vulkan/VulkanWindow.cpp
+    Shader.cpp
+    Renderer.cpp
+    Internal/Log.cpp
+    Internal/Vulkan/Context.cpp
+    Internal/Vulkan/Window.cpp
+    Internal/Vulkan/Shader.cpp
+    Internal/Vulkan/Renderer.cpp
 )
 
 # Set the C++ standard

@@ -1,5 +1,5 @@
 #include <Adore/Context.hpp>
-#include <Adore/Internal/Vulkan/VulkanContext.hpp>
+#include <Adore/Internal/Vulkan/Context.hpp>
 #include <Adore/Log.hpp>
 
 namespace Adore

@@ -6,3 +6,5 @@
 #include "Context.hpp"
 #include "Window.hpp"
 #include "Version.hpp"
+#include "Shader.hpp"
+#include "Renderer.hpp"

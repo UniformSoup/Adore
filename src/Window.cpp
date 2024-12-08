@@ -1,6 +1,6 @@
 #include <Adore/Window.hpp>
-#include <Adore/Internal/Vulkan/VulkanWindow.hpp>
-#include <Adore/Internal/Vulkan/VulkanContext.hpp>
+#include <Adore/Internal/Vulkan/Window.hpp>
+#include <Adore/Internal/Vulkan/Context.hpp>
 
 namespace Adore
 {
@@ -9,7 +9,7 @@ namespace Adore
         switch (ctx->api)
         {
             case API::Vulkan:
-                return std::make_shared<VulkanWindow>(reinterpret_cast<std::shared_ptr<VulkanContext>&>(ctx), title);
+                return std::make_shared<VulkanWindow>(ctx, title);
             default:
                 throw AdoreException("Unsupported API.");
         }

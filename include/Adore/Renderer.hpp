@@ -1,19 +1,30 @@
-// #pragma once
-// #include <Adore/Window.hpp>
-// #include <Adore/Scene.hpp>
+#pragma once
+#include <Adore/Window.hpp>
+// #include <Adore/Shader.hpp>
 
-// namespace Adore
-// {
-//     class Renderer
-//     {
-//     public:
-//         Renderer(Window& window, Scene& scene);
-//         virtual ~Renderer() = default;
+#include "Export.hpp"
 
-//         virtual void render() = 0;
+// Circular includes, Shader depends on Renderer (I don't like...)
+// Renderer .render() should be split into:
+    // .begin() <- requires shader pipeline
+    // .draw()
+    // .end()
 
-//     protected:
-//         Window& m_window;
-//         Scene& m_scene;
-//     };
-// }
+
+namespace Adore
+{
+    class Shader;
+    
+    class ADORE_EXPORT Renderer
+    {
+    public:
+        static std::shared_ptr<Renderer> create(std::shared_ptr<Window>& win);
+        Renderer(std::shared_ptr<Window>& win) : m_win(win) {};
+        virtual ~Renderer() = default;
+        virtual void render(std::shared_ptr<Adore::Shader>& shader) = 0;
+        std::shared_ptr<Window> window() { return m_win; };
+
+    protected:
+        std::shared_ptr<Window> m_win;
+    };
+}

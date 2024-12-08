@@ -18,6 +18,8 @@
 
 void log_message(std::vector<std::string> const& tags, std::string const& message);
 
+std::string vec_to_string(std::vector<char const*> const& vec, std::string const& delim=",\n", std::string const& end=".");
+
 #define ADORE_INTERNAL_LOG(level, msg) log_message                  \
         (                                                           \
             {                                                       \

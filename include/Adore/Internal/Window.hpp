@@ -24,7 +24,8 @@ class Window : public Adore::Window
 protected:
     GLFWwindow* m_window;
 public:
-    Window(std::string const& title)
+    Window(std::shared_ptr<Adore::Context>& ctx, std::string const& title)
+        : Adore::Window(ctx)
     {
         GLFWManager::instance();
 
@@ -37,6 +38,7 @@ public:
         glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         m_window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
+        glfwShowWindow(m_window);
         if (!m_window) throw Adore::AdoreException("Failed to create GLFW window.");
     }
 
@@ -44,16 +46,26 @@ public:
     {
         glfwSetWindowSize(m_window, width, height);
     }
+
+    void framebufferSize(uint32_t& width, uint32_t& height) override
+    {
+        int w, h;
+        glfwGetFramebufferSize(m_window, &w, &h);
+        width = static_cast<uint32_t>(w);
+        height = static_cast<uint32_t>(h);
+    }
     
     void close() override
     {
         glfwSetWindowShouldClose(m_window, GLFW_TRUE);
     }
 
-    void open() override
+    bool is_open() override
     {
-        glfwShowWindow(m_window);
+        return !glfwWindowShouldClose(m_window);
     }
+
+    void poll() override { glfwPollEvents(); }
 
     void surface(VkInstance const& instance, VkSurfaceKHR* pSurface)
     {

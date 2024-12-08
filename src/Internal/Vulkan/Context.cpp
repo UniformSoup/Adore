@@ -1,4 +1,4 @@
-#include <Adore/Internal/Vulkan/VulkanContext.hpp>
+#include <Adore/Internal/Vulkan/Context.hpp>
 #include <Adore/Version.hpp>
 #include <Adore/Internal/Log.hpp>
 #include <Adore/Internal/Window.hpp>
@@ -29,6 +29,9 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL validationCallback(
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
             s = Adore::Severity::INFO;
             break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
+            s = Adore::Severity::INFO;
+            break;
         default:
             return VK_FALSE;
     }
@@ -44,16 +47,6 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL validationCallback(
     );
 
     return VK_FALSE;
-}
-    
-#include <sstream>
-
-std::string vec_to_string(std::vector<char const*> const& vec)
-{
-    std::stringstream ss;
-    for (unsigned int i = 0; i < vec.size(); i++)
-        ss << vec[i] << ((i == vec.size() - 1) ? "." : ",\n");
-    return ss.str();
 }
 
 VulkanContext::VulkanContext(std::string const& appName)
