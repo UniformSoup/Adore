@@ -7,16 +7,17 @@
 
 class VulkanRenderer : public Adore::Renderer
 {
-    VkRenderPass m_renderPass;
-    std::vector<VkFramebuffer> m_framebuffers;
     VkCommandPool m_commandPool;
-    VkCommandBuffer m_commandBuffer;
-    VkSemaphore m_imageAvailable;
-    VkSemaphore m_renderFinished;
-    VkFence m_inFlight;
+    std::vector<VkCommandBuffer> m_commandBuffers;
+    std::vector<VkSemaphore> m_framesAvailable;
+    std::vector<VkSemaphore> m_framesRendered;
+    std::vector<VkFence> m_framesInFlight;
+    uint32_t m_currentFrame = 0;
+    std::pair<VkResult, uint32_t> m_swapchainImage;
 public:
     VulkanRenderer(std::shared_ptr<Adore::Window>& win);
     ~VulkanRenderer();
-    VkRenderPass const& renderpass() const { return m_renderPass; };
-    void render(std::shared_ptr<Adore::Shader>& shader) override;
+    void begin(std::shared_ptr<Adore::Shader>& shader) override;
+    void draw() override;
+    void end() override;
 };

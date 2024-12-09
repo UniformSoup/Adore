@@ -37,12 +37,11 @@ VkShaderStageFlagBits stage(Adore::Shader::Type const& type)
     }
 }
 
-VulkanShader::VulkanShader(std::shared_ptr<Adore::Renderer>& renderer,
+VulkanShader::VulkanShader(std::shared_ptr<Adore::Window>& win,
                 std::vector<std::pair<Adore::Shader::Type, std::string>> const& modules)
-    : Adore::Shader(renderer)
+    : Adore::Shader(win)
 {
-    VulkanRenderer* prenderer = static_cast<VulkanRenderer*>(m_renderer.get());
-    VulkanWindow* pwindow = static_cast<VulkanWindow*>(m_renderer->window().get());
+    VulkanWindow* pwindow = static_cast<VulkanWindow*>(m_win.get());
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo;
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -138,7 +137,6 @@ VulkanShader::VulkanShader(std::shared_ptr<Adore::Renderer>& renderer,
     blendAttachmentInfo.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
     blendAttachmentInfo.alphaBlendOp = VK_BLEND_OP_ADD;
 
-
     VkPipelineColorBlendStateCreateInfo colorBlendingInfo {};
     colorBlendingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     colorBlendingInfo.logicOpEnable = VK_FALSE;
@@ -169,7 +167,7 @@ VulkanShader::VulkanShader(std::shared_ptr<Adore::Renderer>& renderer,
     pipelineInfo.pDynamicState = &dynamicStateInfo;
 
     pipelineInfo.layout = m_pipelineLayout;
-    pipelineInfo.renderPass = prenderer->renderpass();
+    pipelineInfo.renderPass = pwindow->renderpass();
     pipelineInfo.subpass = 0;
     pipelineInfo.pDepthStencilState = nullptr;
 
@@ -192,7 +190,7 @@ VulkanShader::VulkanShader(std::shared_ptr<Adore::Renderer>& renderer,
 
 VulkanShader::~VulkanShader()
 {
-    VulkanWindow * window = static_cast<VulkanWindow*>(m_renderer->window().get());
+    VulkanWindow * window = static_cast<VulkanWindow*>(m_win.get());
     vkQueueWaitIdle(window->queues().graphics);
     vkDestroyPipeline(window->device(), m_pipeline, nullptr);
     vkDestroyPipelineLayout(window->device(), m_pipelineLayout, nullptr);

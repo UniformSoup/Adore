@@ -1,6 +1,6 @@
 #pragma once
 #include <Adore/Window.hpp>
-// #include <Adore/Shader.hpp>
+#include <Adore/Shader.hpp>
 
 #include "Export.hpp"
 
@@ -12,16 +12,16 @@
 
 
 namespace Adore
-{
-    class Shader;
-    
+{    
     class ADORE_EXPORT Renderer
     {
     public:
         static std::shared_ptr<Renderer> create(std::shared_ptr<Window>& win);
         Renderer(std::shared_ptr<Window>& win) : m_win(win) {};
         virtual ~Renderer() = default;
-        virtual void render(std::shared_ptr<Adore::Shader>& shader) = 0;
+        virtual void begin(std::shared_ptr<Adore::Shader>& shader) = 0;
+        virtual void draw() = 0;
+        virtual void end() = 0;
         std::shared_ptr<Window> window() { return m_win; };
 
     protected:

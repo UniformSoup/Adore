@@ -3,66 +3,12 @@
 #include <Adore/Internal/Log.hpp>
 #include <Adore/Internal/Vulkan/Shader.hpp>
 
+constexpr int FRAMES_IN_FLIGHT = 2;
+
 VulkanRenderer::VulkanRenderer(std::shared_ptr<Adore::Window>& win)
     : Adore::Renderer(win)
 {
     VulkanWindow* window = static_cast<VulkanWindow*>(m_win.get());
-
-    VkAttachmentDescription colorAttachment{};
-    colorAttachment.format = window->format().format;
-    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-    VkAttachmentReference colorAttachmentRef{};
-    colorAttachmentRef.attachment = 0;
-    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-    VkSubpassDescription subpass{};
-    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.colorAttachmentCount = 1;
-    subpass.pColorAttachments = &colorAttachmentRef;
-
-    VkSubpassDependency dependency {};
-    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependency.dstSubpass = 0;
-    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.srcAccessMask = 0;
-    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-    VkRenderPassCreateInfo renderPassInfo{};
-    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassInfo.attachmentCount = 1;
-    renderPassInfo.pAttachments = &colorAttachment;
-    renderPassInfo.subpassCount = 1;
-    renderPassInfo.pSubpasses = &subpass;
-    renderPassInfo.dependencyCount = 1;
-    renderPassInfo.pDependencies = &dependency;
-
-    if (vkCreateRenderPass(window->device(), &renderPassInfo, nullptr, &m_renderPass) != VK_SUCCESS)
-        throw Adore::AdoreException("Failed to create Vulkan renderpass.");
-
-    m_framebuffers.resize(window->imageViews().size());
-
-    for (size_t i = 0; i < window->imageViews().size(); i++)
-    {
-        VkFramebufferCreateInfo framebufferInfo {};
-        framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        framebufferInfo.renderPass = m_renderPass;
-        framebufferInfo.attachmentCount = 1;
-        framebufferInfo.pAttachments = &window->imageViews()[i];
-        framebufferInfo.width = window->extent().width;
-        framebufferInfo.height = window->extent().height;
-        framebufferInfo.layers = 1;
-
-        if (vkCreateFramebuffer(window->device(), &framebufferInfo, nullptr, &m_framebuffers[i]) != VK_SUCCESS)
-            throw Adore::AdoreException("Failed to create Vulkan framebuffer.");
-    }
 
     VkCommandPoolCreateInfo poolInfo {};
     poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -72,28 +18,37 @@ VulkanRenderer::VulkanRenderer(std::shared_ptr<Adore::Window>& win)
     if (vkCreateCommandPool(window->device(), &poolInfo, nullptr, &m_commandPool) != VK_SUCCESS)
         throw Adore::AdoreException("Failed to create Vulkan command pool.");
 
+    m_commandBuffers.resize(FRAMES_IN_FLIGHT);
+
     VkCommandBufferAllocateInfo allocInfo {};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocInfo.commandPool = m_commandPool;
     allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandBufferCount = 1;
+    allocInfo.commandBufferCount = m_commandBuffers.size();
 
-    if (vkAllocateCommandBuffers(window->device(), &allocInfo, &m_commandBuffer) != VK_SUCCESS)
+    if (vkAllocateCommandBuffers(window->device(), &allocInfo, m_commandBuffers.data()) != VK_SUCCESS)
         throw Adore::AdoreException("Failed to allocate Vulkan command buffer.");
 
     VkSemaphoreCreateInfo semaphoreInfo {};
     semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-    if (vkCreateSemaphore(window->device(), &semaphoreInfo, nullptr, &m_imageAvailable) != VK_SUCCESS
-    ||  vkCreateSemaphore(window->device(), &semaphoreInfo, nullptr, &m_renderFinished) != VK_SUCCESS)
-        throw Adore::AdoreException("Failed to create Vulkan semaphores.");
-    
     VkFenceCreateInfo fenceInfo {};
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-    if (vkCreateFence(window->device(), &fenceInfo, nullptr, &m_inFlight) != VK_SUCCESS)
-        throw Adore::AdoreException("Failed to create Vulkan fence.");
+    m_framesAvailable.resize(FRAMES_IN_FLIGHT);
+    m_framesRendered.resize(FRAMES_IN_FLIGHT);
+    m_framesInFlight.resize(FRAMES_IN_FLIGHT);
+
+    for (unsigned int i = 0; i < FRAMES_IN_FLIGHT; i++)
+    {
+        if (vkCreateSemaphore(window->device(), &semaphoreInfo, nullptr, &m_framesAvailable[i]) != VK_SUCCESS
+        ||  vkCreateSemaphore(window->device(), &semaphoreInfo, nullptr, &m_framesRendered[i]) != VK_SUCCESS)
+            throw Adore::AdoreException("Failed to create Vulkan semaphores.");
+
+        if (vkCreateFence(window->device(), &fenceInfo, nullptr, &m_framesInFlight[i]) != VK_SUCCESS)
+            throw Adore::AdoreException("Failed to create Vulkan fence.");
+    }
 
     ADORE_INTERNAL_LOG(INFO, "Created Renderer (Vulkan).");
 }
@@ -101,100 +56,115 @@ VulkanRenderer::VulkanRenderer(std::shared_ptr<Adore::Window>& win)
 VulkanRenderer::~VulkanRenderer()
 {
     auto window = static_cast<VulkanWindow*>(m_win.get());
-    
+
     vkQueueWaitIdle(window->queues().graphics);
 
-    vkDestroyFence(window->device(), m_inFlight, nullptr);
-
-    vkDestroySemaphore(window->device(), m_imageAvailable, nullptr);
-    vkDestroySemaphore(window->device(), m_renderFinished, nullptr);
+    for (unsigned int i = 0; i < FRAMES_IN_FLIGHT; i++)
+    {
+        vkDestroySemaphore(window->device(), m_framesAvailable[i], nullptr);
+        vkDestroySemaphore(window->device(), m_framesRendered[i], nullptr);
+        vkDestroyFence(window->device(), m_framesInFlight[i], nullptr);
+    }
 
     vkDestroyCommandPool(window->device(), m_commandPool, nullptr);
-    
-    for (auto framebuffer : m_framebuffers)
-        vkDestroyFramebuffer(window->device(), framebuffer, nullptr);
-
-    vkDestroyRenderPass(window->device(), m_renderPass, nullptr);   
 }
 
-void VulkanRenderer::render(std::shared_ptr<Adore::Shader>& shader)
+void VulkanRenderer::begin(std::shared_ptr<Adore::Shader>& shader)
 {
-    auto window = static_cast<VulkanWindow*>(m_win.get());
+    if (m_win != shader->window())
+        throw Adore::AdoreException("Shader was not created with the same Window as the Renderer.");
+
+    auto pwindow = static_cast<VulkanWindow*>(m_win.get());
     auto pshader = static_cast<VulkanShader*>(shader.get());
 
-    vkWaitForFences(window->device(), 1, &m_inFlight, VK_TRUE, UINT64_MAX);
-    vkResetFences(window->device(), 1, &m_inFlight);
+    vkWaitForFences(pwindow->device(), 1, &m_framesInFlight[m_currentFrame], VK_TRUE, UINT64_MAX);
+    vkResetFences(pwindow->device(), 1, &m_framesInFlight[m_currentFrame]);
 
-    uint32_t imageIndex;
-    vkAcquireNextImageKHR(window->device(), window->swapchain(),
-                          UINT64_MAX, m_imageAvailable, VK_NULL_HANDLE, &imageIndex);
+    m_swapchainImage.first = vkAcquireNextImageKHR(pwindow->device(), pwindow->swapchain().get(),
+                UINT64_MAX, m_framesAvailable[m_currentFrame], VK_NULL_HANDLE, &m_swapchainImage.second);
 
-    vkResetCommandBuffer(m_commandBuffer, 0);
+    vkResetCommandBuffer(m_commandBuffers[m_currentFrame], 0);
 
     VkCommandBufferBeginInfo beginInfo {};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     beginInfo.pInheritanceInfo = nullptr;
 
-    if (vkBeginCommandBuffer(m_commandBuffer, &beginInfo) != VK_SUCCESS)
+    if (vkBeginCommandBuffer(m_commandBuffers[m_currentFrame], &beginInfo) != VK_SUCCESS)
         throw Adore::AdoreException("Failed to begin Vulkan command buffer.");
 
     VkRenderPassBeginInfo renderPassInfo {};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassInfo.renderPass = m_renderPass;
-    renderPassInfo.framebuffer = m_framebuffers[imageIndex];
+    renderPassInfo.renderPass = pwindow->renderpass();
+    renderPassInfo.framebuffer = pwindow->swapchain().framebuffers()[m_swapchainImage.second];
     renderPassInfo.renderArea.offset = {0, 0};
-    renderPassInfo.renderArea.extent = window->extent();
+    renderPassInfo.renderArea.extent = pwindow->extent();
 
     VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
     renderPassInfo.clearValueCount = 1;
     renderPassInfo.pClearValues = &clearColor;
 
-    vkCmdBeginRenderPass(m_commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBeginRenderPass(m_commandBuffers[m_currentFrame], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pshader->pipeline());
+    vkCmdBindPipeline(m_commandBuffers[m_currentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS, pshader->pipeline());
+}
+
+void VulkanRenderer::draw()
+{
+    auto pwindow = static_cast<VulkanWindow*>(m_win.get());
 
     VkViewport viewport {};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = static_cast<float>(window->extent().width);
-    viewport.height = static_cast<float>(window->extent().height);
+    viewport.width = static_cast<float>(pwindow->extent().width);
+    viewport.height = static_cast<float>(pwindow->extent().height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
     VkRect2D scissor {};
     scissor.offset = {0, 0};
-    scissor.extent = window->extent();
+    scissor.extent = pwindow->extent();
 
-    vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
-    vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
+    vkCmdSetViewport(m_commandBuffers[m_currentFrame], 0, 1, &viewport);
+    vkCmdSetScissor(m_commandBuffers[m_currentFrame], 0, 1, &scissor);
 
-    vkCmdDraw(m_commandBuffer, 3, 1, 0, 0);
+    vkCmdDraw(m_commandBuffers[m_currentFrame], 3, 1, 0, 0);
 
-    vkCmdEndRenderPass(m_commandBuffer);
-    vkEndCommandBuffer(m_commandBuffer);
+}
+
+void VulkanRenderer::end()
+{
+    auto pwindow = static_cast<VulkanWindow*>(m_win.get());
+
+    vkCmdEndRenderPass(m_commandBuffers[m_currentFrame]);
+    vkEndCommandBuffer(m_commandBuffers[m_currentFrame]);
 
     VkSubmitInfo submitInfo {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = &m_imageAvailable;
+    submitInfo.pWaitSemaphores = &m_framesAvailable[m_currentFrame];
     VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     submitInfo.pWaitDstStageMask = waitStages;
     submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &m_commandBuffer;
+    submitInfo.pCommandBuffers = &m_commandBuffers[m_currentFrame];
     submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = &m_renderFinished;
+    submitInfo.pSignalSemaphores = &m_framesRendered[m_currentFrame];
 
-    if (vkQueueSubmit(window->queues().graphics, 1, &submitInfo, m_inFlight) != VK_SUCCESS)
+    if (vkQueueSubmit(pwindow->queues().graphics, 1, &submitInfo, m_framesInFlight[m_currentFrame]) != VK_SUCCESS)
         throw Adore::AdoreException("Failed to submit Vulkan command buffer.");
 
     VkPresentInfoKHR presentInfo {};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = &m_renderFinished;
+    presentInfo.pWaitSemaphores = &m_framesRendered[m_currentFrame];
     presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = &window->swapchain();
-    presentInfo.pImageIndices = &imageIndex;
+    presentInfo.pSwapchains = &pwindow->swapchain().get();
+    presentInfo.pImageIndices = &m_swapchainImage.second;
 
-    vkQueuePresentKHR(window->queues().present, &presentInfo);
+    vkQueuePresentKHR(pwindow->queues().present, &presentInfo);
+
+    if (m_swapchainImage.first == VK_ERROR_OUT_OF_DATE_KHR || m_swapchainImage.first == VK_SUBOPTIMAL_KHR)
+        pwindow->recreateSwapchain();
+    
+    m_currentFrame = (m_currentFrame + 1) % FRAMES_IN_FLIGHT;
 }
