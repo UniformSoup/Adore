@@ -4,6 +4,8 @@
  - ~~__Swapchain resizing__~~
  - ~~Fix Swapchain~~
  - Shaders more customisable
+ - Settings object / customise window vsync presentmode etc.
+   (ie big settings struct with a window settings, sound settings ect)
  - Application
  - Meshes / Models
  - Animations
