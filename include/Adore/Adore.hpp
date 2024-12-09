@@ -8,3 +8,4 @@
 #include "Version.hpp"
 #include "Shader.hpp"
 #include "Renderer.hpp"
+#include "Buffer.hpp"

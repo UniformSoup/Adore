@@ -7,11 +7,13 @@ set(SOURCES
     Window.cpp
     Shader.cpp
     Renderer.cpp
+    Buffer.cpp
     Internal/Log.cpp
     Internal/Vulkan/Context.cpp
     Internal/Vulkan/Window.cpp
     Internal/Vulkan/Shader.cpp
     Internal/Vulkan/Renderer.cpp
+    Internal/Vulkan/Buffer.cpp
 )
 
 # Set the C++ standard

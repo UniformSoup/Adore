@@ -2,6 +2,7 @@
 #include <Adore/Internal/Vulkan/Window.hpp>
 #include <Adore/Internal/Log.hpp>
 #include <Adore/Internal/Vulkan/Shader.hpp>
+#include <Adore/Internal/Vulkan/Buffer.hpp>
 
 constexpr int FRAMES_IN_FLIGHT = 2;
 
@@ -88,7 +89,6 @@ void VulkanRenderer::begin(std::shared_ptr<Adore::Shader>& shader)
     VkCommandBufferBeginInfo beginInfo {};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    beginInfo.pInheritanceInfo = nullptr;
 
     if (vkBeginCommandBuffer(m_commandBuffers[m_currentFrame], &beginInfo) != VK_SUCCESS)
         throw Adore::AdoreException("Failed to begin Vulkan command buffer.");
@@ -109,7 +109,7 @@ void VulkanRenderer::begin(std::shared_ptr<Adore::Shader>& shader)
     vkCmdBindPipeline(m_commandBuffers[m_currentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS, pshader->pipeline());
 }
 
-void VulkanRenderer::draw()
+void VulkanRenderer::draw(uint32_t const& count)
 {
     auto pwindow = static_cast<VulkanWindow*>(m_win.get());
 
@@ -128,8 +128,7 @@ void VulkanRenderer::draw()
     vkCmdSetViewport(m_commandBuffers[m_currentFrame], 0, 1, &viewport);
     vkCmdSetScissor(m_commandBuffers[m_currentFrame], 0, 1, &scissor);
 
-    vkCmdDraw(m_commandBuffers[m_currentFrame], 3, 1, 0, 0);
-
+    vkCmdDraw(m_commandBuffers[m_currentFrame], count, 1, 0, 0);
 }
 
 void VulkanRenderer::end()
@@ -167,4 +166,58 @@ void VulkanRenderer::end()
         pwindow->recreateSwapchain();
     
     m_currentFrame = (m_currentFrame + 1) % FRAMES_IN_FLIGHT;
+}
+
+void VulkanRenderer::copy(VkBuffer const& src, VkBuffer const& dst, uint64_t const& size)
+{
+    VulkanWindow* pwindow = static_cast<VulkanWindow*>(m_win.get());
+    VkCommandBufferAllocateInfo allocInfo {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool = m_commandPool;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandBufferCount = 1;
+
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(pwindow->device(), &allocInfo, &commandBuffer);
+
+    VkCommandBufferBeginInfo beginInfo {};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    
+    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
+        throw Adore::AdoreException("Failed to begin Vulkan command buffer.");
+
+    VkBufferCopy copyRegion {};
+    copyRegion.srcOffset = 0;
+    copyRegion.dstOffset = 0;
+    copyRegion.size = size;
+
+    vkCmdCopyBuffer(commandBuffer, src, dst, 1, &copyRegion);
+
+    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+        throw Adore::AdoreException("Failed to end Vulkan command buffer.");
+
+    VkSubmitInfo submitInfo {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+
+    vkQueueSubmit(pwindow->queues().graphics, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(pwindow->queues().graphics);
+
+    vkFreeCommandBuffers(pwindow->device(), m_commandPool, 1, &commandBuffer);
+}
+
+void VulkanRenderer::bind(std::shared_ptr<Adore::Buffer>& buffer, uint32_t const& binding)
+{
+
+    if (buffer->renderer().get() != this)
+        throw Adore::AdoreException("Buffer is not bound to this renderer.");
+
+    VkDeviceSize offset = 0;
+
+    vkCmdBindVertexBuffers(m_commandBuffers[m_currentFrame], binding, 1,
+                           &static_cast<VulkanBuffer*>(buffer.get())->buffer(),
+                           &offset);
+
 }

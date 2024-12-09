@@ -37,9 +37,34 @@ VkShaderStageFlagBits stage(Adore::Shader::Type const& type)
     }
 }
 
+VkFormat format(Adore::Shader::InputDescriptor::Format const& type)
+{
+    typedef Adore::Shader::InputDescriptor::Format ShaderFormat;
+    switch (type)
+    {
+        case ShaderFormat::FLOAT:       return VK_FORMAT_R32_SFLOAT;
+        case ShaderFormat::VEC2_FLOAT:  return VK_FORMAT_R32G32_SFLOAT;
+        case ShaderFormat::VEC3_FLOAT:  return VK_FORMAT_R32G32B32_SFLOAT;
+        case ShaderFormat::VEC4_FLOAT:  return VK_FORMAT_R32G32B32A32_SFLOAT;
+        case ShaderFormat::INT:         return VK_FORMAT_R32_SINT;
+        case ShaderFormat::VEC2_INT:    return VK_FORMAT_R32G32_SINT;
+        case ShaderFormat::VEC3_INT:    return VK_FORMAT_R32G32B32_SINT;
+        case ShaderFormat::VEC4_INT:    return VK_FORMAT_R32G32B32A32_SINT;
+        case ShaderFormat::UINT:        return VK_FORMAT_R32_UINT;
+        case ShaderFormat::VEC2_UINT:   return VK_FORMAT_R32G32_UINT;
+        case ShaderFormat::VEC3_UINT:   return VK_FORMAT_R32G32B32_UINT;
+        case ShaderFormat::VEC4_UINT:   return VK_FORMAT_R32G32B32A32_UINT;
+        case ShaderFormat::DOUBLE:      return VK_FORMAT_R64_SFLOAT;
+        case ShaderFormat::VEC2_DOUBLE: return VK_FORMAT_R64G64_SFLOAT;
+        case ShaderFormat::VEC3_DOUBLE: return VK_FORMAT_R64G64B64_SFLOAT;
+        case ShaderFormat::VEC4_DOUBLE: return VK_FORMAT_R64G64B64A64_SFLOAT;
+    }
+}
+
 VulkanShader::VulkanShader(std::shared_ptr<Adore::Window>& win,
-                std::vector<std::pair<Adore::Shader::Type, std::string>> const& modules)
-    : Adore::Shader(win)
+                std::vector<Adore::Shader::Module> const& modules,
+                Adore::Shader::InputDescriptor const& descriptor)
+    : Adore::Shader(win, descriptor)
 {
     VulkanWindow* pwindow = static_cast<VulkanWindow*>(m_win.get());
 
@@ -61,8 +86,8 @@ VulkanShader::VulkanShader(std::shared_ptr<Adore::Window>& win,
     {
         VkPipelineShaderStageCreateInfo pipelineInfo;
         pipelineInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        pipelineInfo.stage = stage(modules[i].first);
-        pipelineInfo.module = shader(pwindow->device(), read(modules[i].second));
+        pipelineInfo.stage = stage(modules[i].type);
+        pipelineInfo.module = shader(pwindow->device(), read(modules[i].path));
         pipelineInfo.pName = "main";
         shaderInfos[i] = pipelineInfo;
     }
@@ -74,12 +99,30 @@ VulkanShader::VulkanShader(std::shared_ptr<Adore::Window>& win,
     dynamicStateInfo.dynamicStateCount = dynamicStates.size();
     dynamicStateInfo.pDynamicStates = dynamicStates.data();
 
+    std::vector<VkVertexInputBindingDescription> bindingDescriptions(m_descriptor.bindings.size());
+    std::vector<VkVertexInputAttributeDescription> attributeDescriptions(m_descriptor.attributes.size());
+
+    for (unsigned int i = 0; i < m_descriptor.bindings.size(); i++)
+    {
+        bindingDescriptions[i].binding = m_descriptor.bindings[i].binding;
+        bindingDescriptions[i].stride = m_descriptor.bindings[i].stride;
+        bindingDescriptions[i].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    }
+
+    for (unsigned int i = 0; i < m_descriptor.attributes.size(); i++)
+    {
+        attributeDescriptions[i].binding = m_descriptor.attributes[i].binding;
+        attributeDescriptions[i].location = m_descriptor.attributes[i].location;
+        attributeDescriptions[i].format = format(m_descriptor.attributes[i].format);
+        attributeDescriptions[i].offset = m_descriptor.attributes[i].offset;
+    }
+
     VkPipelineVertexInputStateCreateInfo vertexInputInfo {};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputInfo.vertexBindingDescriptionCount = 0;
-    vertexInputInfo.pVertexBindingDescriptions = nullptr;
-    vertexInputInfo.vertexAttributeDescriptionCount = 0;
-    vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+    vertexInputInfo.vertexBindingDescriptionCount = bindingDescriptions.size();
+    vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
+    vertexInputInfo.vertexAttributeDescriptionCount = attributeDescriptions.size();
+    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo {};
     inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -183,7 +226,7 @@ VulkanShader::VulkanShader(std::shared_ptr<Adore::Window>& win,
     std::vector<const char*> shader_paths;
 
     std::transform(modules.begin(), modules.end(), std::back_inserter(shader_paths),
-               [](const auto& pair) { return pair.second.c_str(); });
+               [](const auto& pair) { return pair.path.c_str(); });
 
     ADORE_INTERNAL_LOG(INFO, "Shader created:\n" + vec_to_string(shader_paths));
 }

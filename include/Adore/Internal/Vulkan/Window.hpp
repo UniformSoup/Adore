@@ -67,4 +67,5 @@ public:
     VkSurfaceFormatKHR const& format() const { return m_format; };
     void recreateSwapchain();
     VkRenderPass const& renderpass() const { return m_renderPass; };
+    VkPhysicalDevice const& physicalDevice() const { return m_physicalDevice; };
 };

@@ -17,7 +17,9 @@ class VulkanRenderer : public Adore::Renderer
 public:
     VulkanRenderer(std::shared_ptr<Adore::Window>& win);
     ~VulkanRenderer();
+    void copy(VkBuffer const& src, VkBuffer const& dst, uint64_t const& size);
     void begin(std::shared_ptr<Adore::Shader>& shader) override;
-    void draw() override;
+    void bind(std::shared_ptr<Adore::Buffer>& buffer, uint32_t const& binding) override;
+    void draw(uint32_t const& count) override;
     void end() override;
 };

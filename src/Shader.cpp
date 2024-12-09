@@ -6,12 +6,13 @@
 namespace Adore
 {
     std::shared_ptr<Shader> Shader::create(std::shared_ptr<Window>& win,
-                                std::vector<std::pair<Type, std::string>> const& modules)
+                                std::vector<Module> const& modules,
+                                InputDescriptor const& descriptor)
     {
         switch (win->context()->api)
         {
             case API::Vulkan:
-                return std::make_shared<VulkanShader>(win, modules);
+                return std::make_shared<VulkanShader>(win, modules, descriptor);
             default:
                 throw AdoreException("Unsupported API.");
         }
