@@ -1,9 +1,11 @@
 # <center>Adore Engine</center>
 ## <center>TODO:</center>
 
+Next stop index buffers and uniforms 
+
  - ~~__Swapchain resizing__~~
  - ~~Fix Swapchain~~
- - Shaders more customisable
+ - ~~Shaders more customisable~~
  - Application (what structure??)
  - Settings object / customise window vsync presentmode etc.
    (ie big settings struct with a window settings, sound settings ect)
