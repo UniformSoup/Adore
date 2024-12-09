@@ -3,17 +3,6 @@
 #include <Adore/Internal/Vulkan/Window.hpp>
 #include <Adore/Internal/Log.hpp>
 
-VkBufferUsageFlags bufferusage(Adore::Buffer::Usage const& usage)
-{
-    switch (usage)
-    {
-        case Adore::Buffer::Usage::Vertex:
-            return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-        case Adore::Buffer::Usage::Index:
-            return VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-    }
-}
-
 void createBuffer(VkDevice const& device, VkPhysicalDevice const& physicalDevice, VkDeviceSize size,
                   VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
                   VkBuffer& buffer, VkDeviceMemory& bufferMemory)
@@ -56,10 +45,9 @@ void createBuffer(VkDevice const& device, VkPhysicalDevice const& physicalDevice
     throw Adore::AdoreException("Failed to find suitable Vulkan buffer memory.");
 }
 
-VulkanBuffer::VulkanBuffer(std::shared_ptr<Adore::Renderer>& renderer,
-                        Adore::Buffer::Usage const& usage, void* pdata,
-                        uint64_t const& size)
-    : Adore::Buffer(renderer)
+VulkanIndexBuffer::VulkanIndexBuffer(std::shared_ptr<Adore::Renderer>& renderer,
+                        void* pdata, uint64_t const& size)
+    : Adore::IndexBuffer(renderer)
 {
     VulkanRenderer * prenderer = static_cast<VulkanRenderer*>(m_renderer.get());
     VulkanWindow * pwindow = static_cast<VulkanWindow*>(m_renderer->window().get());
@@ -78,7 +66,7 @@ VulkanBuffer::VulkanBuffer(std::shared_ptr<Adore::Renderer>& renderer,
     vkUnmapMemory(pwindow->device(), stagingBufferMemory);
 
     createBuffer(pwindow->device(), pwindow->physicalDevice(), size,
-                 bufferusage(usage) | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                 VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                  m_buffer, m_memory);
 
@@ -87,10 +75,50 @@ VulkanBuffer::VulkanBuffer(std::shared_ptr<Adore::Renderer>& renderer,
     vkDestroyBuffer(pwindow->device(), stagingBuffer, nullptr);
     vkFreeMemory(pwindow->device(), stagingBufferMemory, nullptr);
 
-    ADORE_INTERNAL_LOG(INFO, "Created Vulkan buffer.");
+    ADORE_INTERNAL_LOG(INFO, "Created Vulkan Index buffer.");
 }
 
-VulkanBuffer::~VulkanBuffer()
+VulkanIndexBuffer::~VulkanIndexBuffer()
+{
+    VulkanWindow * pwindow = static_cast<VulkanWindow*>(m_renderer->window().get());
+    vkDestroyBuffer(pwindow->device(), m_buffer, nullptr);
+    vkFreeMemory(pwindow->device(), m_memory, nullptr);
+}
+
+VulkanVertexBuffer::VulkanVertexBuffer(std::shared_ptr<Adore::Renderer>& renderer,
+                        void* pdata, uint64_t const& size)
+    : Adore::VertexBuffer(renderer)
+{
+    VulkanRenderer * prenderer = static_cast<VulkanRenderer*>(m_renderer.get());
+    VulkanWindow * pwindow = static_cast<VulkanWindow*>(m_renderer->window().get());
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+
+    createBuffer(pwindow->device(), pwindow->physicalDevice(), size,
+                 VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                 stagingBuffer, stagingBufferMemory);
+
+    void * map;
+    vkMapMemory(pwindow->device(), stagingBufferMemory, 0, size, 0, &map);
+        memcpy(map, pdata, size);
+    vkUnmapMemory(pwindow->device(), stagingBufferMemory);
+
+    createBuffer(pwindow->device(), pwindow->physicalDevice(), size,
+                 VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                 m_buffer, m_memory);
+
+    prenderer->copy(stagingBuffer, m_buffer, size);
+
+    vkDestroyBuffer(pwindow->device(), stagingBuffer, nullptr);
+    vkFreeMemory(pwindow->device(), stagingBufferMemory, nullptr);
+
+    ADORE_INTERNAL_LOG(INFO, "Created Vulkan Vertex buffer.");
+}
+
+VulkanVertexBuffer::~VulkanVertexBuffer()
 {
     VulkanWindow * pwindow = static_cast<VulkanWindow*>(m_renderer->window().get());
     vkDestroyBuffer(pwindow->device(), m_buffer, nullptr);

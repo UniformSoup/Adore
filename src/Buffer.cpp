@@ -4,13 +4,23 @@
 
 namespace Adore
 {
-    std::shared_ptr<Buffer> Buffer::create(std::shared_ptr<Renderer>& renderer,
-                    Usage const& usage, void* pdata, uint64_t const& size)
+    std::shared_ptr<VertexBuffer> VertexBuffer::create(std::shared_ptr<Renderer>& renderer,
+                                           void* pdata, uint64_t const& size)
     {
         switch (renderer->window()->context()->api)
         {
             case API::Vulkan:
-                return std::make_shared<VulkanBuffer>(renderer, usage, pdata, size);
+                return std::make_shared<VulkanVertexBuffer>(renderer, pdata, size);
+        }
+    }
+
+    std::shared_ptr<IndexBuffer> IndexBuffer::create(std::shared_ptr<Renderer>& renderer,
+                                                void* pdata, uint64_t const& size)
+    {
+        switch (renderer->window()->context()->api)
+        {
+            case API::Vulkan:
+                return std::make_shared<VulkanIndexBuffer>(renderer, pdata, size);
         }
     }
 }

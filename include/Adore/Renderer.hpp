@@ -6,7 +6,8 @@
 
 namespace Adore
 {
-    class Buffer;
+    class VertexBuffer;
+    class IndexBuffer;
     class ADORE_EXPORT Renderer
     {
     public:
@@ -14,8 +15,10 @@ namespace Adore
         Renderer(std::shared_ptr<Window>& win) : m_win(win) {};
         virtual ~Renderer() = default;
         virtual void begin(std::shared_ptr<Shader>& shader) = 0;
-        virtual void bind(std::shared_ptr<Buffer>& buffer, uint32_t const& binding) = 0;
+        virtual void bind(std::shared_ptr<VertexBuffer>& buffer, uint32_t const& binding) = 0;
+        virtual void bind(std::shared_ptr<IndexBuffer>& buffer) = 0;
         virtual void draw(uint32_t const& count) = 0;
+        virtual void drawIndexed(uint32_t const& count) = 0;
         virtual void end() = 0;
         std::shared_ptr<Window> window() { return m_win; };
 

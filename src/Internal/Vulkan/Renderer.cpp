@@ -131,6 +131,28 @@ void VulkanRenderer::draw(uint32_t const& count)
     vkCmdDraw(m_commandBuffers[m_currentFrame], count, 1, 0, 0);
 }
 
+void VulkanRenderer::drawIndexed(uint32_t const& count)
+{
+    auto pwindow = static_cast<VulkanWindow*>(m_win.get());
+
+    VkViewport viewport {};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = static_cast<float>(pwindow->extent().width);
+    viewport.height = static_cast<float>(pwindow->extent().height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    VkRect2D scissor {};
+    scissor.offset = {0, 0};
+    scissor.extent = pwindow->extent();
+
+    vkCmdSetViewport(m_commandBuffers[m_currentFrame], 0, 1, &viewport);
+    vkCmdSetScissor(m_commandBuffers[m_currentFrame], 0, 1, &scissor);
+
+    vkCmdDrawIndexed(m_commandBuffers[m_currentFrame], count, 1, 0, 0, 0);
+}
+
 void VulkanRenderer::end()
 {
     auto pwindow = static_cast<VulkanWindow*>(m_win.get());
@@ -208,16 +230,24 @@ void VulkanRenderer::copy(VkBuffer const& src, VkBuffer const& dst, uint64_t con
     vkFreeCommandBuffers(pwindow->device(), m_commandPool, 1, &commandBuffer);
 }
 
-void VulkanRenderer::bind(std::shared_ptr<Adore::Buffer>& buffer, uint32_t const& binding)
+void VulkanRenderer::bind(std::shared_ptr<Adore::IndexBuffer>& buffer)
 {
-
     if (buffer->renderer().get() != this)
-        throw Adore::AdoreException("Buffer is not bound to this renderer.");
+        throw Adore::AdoreException("Index Buffer is not bound to this renderer.");
+
+    vkCmdBindIndexBuffer(m_commandBuffers[m_currentFrame],
+                         static_cast<VulkanIndexBuffer*>(buffer.get())->buffer(),
+                         0, VK_INDEX_TYPE_UINT16);
+}
+
+void VulkanRenderer::bind(std::shared_ptr<Adore::VertexBuffer>& buffer, uint32_t const& binding)
+{
+    if (buffer->renderer().get() != this)
+        throw Adore::AdoreException("Vertex Buffer is not bound to this renderer.");
 
     VkDeviceSize offset = 0;
 
     vkCmdBindVertexBuffers(m_commandBuffers[m_currentFrame], binding, 1,
-                           &static_cast<VulkanBuffer*>(buffer.get())->buffer(),
+                           &static_cast<VulkanVertexBuffer*>(buffer.get())->buffer(),
                            &offset);
-
 }
