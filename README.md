@@ -6,16 +6,11 @@ Total lines of CMake code: 256
 
 ## <center>TODO:</center>
 
-The renderer should manage descriptor pools.
-Vertex Buffers should contain a binding to make rendering cleaner.
-
 Next:
- - Uniforms / Push Constants.
-
- - Application (what structure?? Layers? State?)
- - Input (Input Manager + Events)
-
  - Textures
+
+  - Application (what structure?? Layers? State?)
+  - Input (Input Manager + Events)
 
  - Settings object / customise window vsync presentmode etc.
    (ie big settings struct with a window settings, sound settings ect)
