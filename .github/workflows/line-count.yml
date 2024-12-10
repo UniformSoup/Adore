@@ -26,5 +26,5 @@ jobs:
 
       - name: Update README.md
         run: |
-          sed -i "s/Total lines of C++ code: [0-9]*/Total lines of C++ code: ${{ env.cpplines }}/" README.md
-          sed -i "s/Total lines of CMake code: [0-9]*/Total lines of CMake code: ${{ env.cmakelines }}/" README.md
+          sed -i "s/Total lines of C++ code: [0-9]*/Total lines of C++ code: ${ env.cpplines }/" README.md
+          sed -i "s/Total lines of CMake code: [0-9]*/Total lines of CMake code: ${ env.cmakelines }/" README.md
