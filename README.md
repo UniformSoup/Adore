@@ -1,6 +1,6 @@
 # <center>Adore Engine</center>
 
-Total lines of C++ code: 1134
+Total lines of C++ code: 1136
 
 Total lines of CMake code: 256
 
