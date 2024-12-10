@@ -6,7 +6,7 @@ Total lines of CMake code: 256
 
 ## <center>TODO:</center>
 
-The renderer should manager descriptor pools.
+The renderer should manage descriptor pools.
 
 Next:
  - Uniforms / Push Constants.
