@@ -1,4 +1,9 @@
 # <center>Adore Engine</center>
+
+Total lines of C++ code: 1134
+
+Total lines of CMake code: 256
+
 ## <center>TODO:</center>
 
 The renderer should manager descriptor pools.
