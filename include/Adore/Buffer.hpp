@@ -9,6 +9,7 @@ namespace Adore
 {
     class Buffer
     {
+            // Adding lines as a test.
     public:
         virtual ~Buffer() = default;
         std::shared_ptr<Renderer> renderer() { return m_renderer; }

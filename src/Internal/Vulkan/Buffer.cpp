@@ -120,6 +120,7 @@ VulkanVertexBuffer::VulkanVertexBuffer(std::shared_ptr<Adore::Renderer>& rendere
 
 VulkanVertexBuffer::~VulkanVertexBuffer()
 {
+    // Adding lines as a test.
     VulkanWindow * pwindow = static_cast<VulkanWindow*>(m_renderer->window().get());
     vkDestroyBuffer(pwindow->device(), m_buffer, nullptr);
     vkFreeMemory(pwindow->device(), m_memory, nullptr);
