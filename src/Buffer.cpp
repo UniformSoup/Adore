@@ -1,6 +1,7 @@
 #include <Adore/Buffer.hpp>
 
 #include <Adore/Internal/Vulkan/Buffer.hpp>
+#include <Adore/Internal/Log.hpp>
 
 namespace Adore
 {
@@ -11,6 +12,8 @@ namespace Adore
         {
             case API::Vulkan:
                 return std::make_shared<VulkanVertexBuffer>(renderer, pdata, size);
+            default:
+                throw AdoreException("Unsupported API.");
         }
     }
 
@@ -21,6 +24,8 @@ namespace Adore
         {
             case API::Vulkan:
                 return std::make_shared<VulkanIndexBuffer>(renderer, pdata, size);
+            default:
+                throw AdoreException("Unsupported API.");
         }
     }
 }

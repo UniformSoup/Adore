@@ -1,5 +1,6 @@
 #include <Adore/Renderer.hpp>
 #include <Adore/Internal/Vulkan/Renderer.hpp>
+#include <Adore/Internal/Log.hpp>
 
 namespace Adore
 {
@@ -9,6 +10,8 @@ namespace Adore
         {
             case API::Vulkan:
                 return std::make_shared<VulkanRenderer>(win);
+            default:
+                throw AdoreException("Unsupported API.");
         }
     }
 }
