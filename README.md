@@ -1,4 +1,8 @@
 # <center>Adore Engine</center>
+
+Total lines of C++ code: 0
+Total lines of CMake code: 0
+
 ## <center>TODO:</center>
 
 Next stop index buffers and uniforms 
