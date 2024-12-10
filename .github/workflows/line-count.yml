@@ -20,9 +20,19 @@ jobs:
           cmakelines=$(find . -path ./lib -prune \
                     -name "*.cmake" -o -name "CMakeLists.txt" \
                     | xargs wc -l | awk '{total += $1} END {print total}')
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
           sed -i "s/Total lines of C++ code:.*/Total lines of C++ code: $cpplines/" README.md
           sed -i "s/Total lines of CMake code:.*/Total lines of CMake code: $cmakelines/" README.md
+        
+      - name: Push if changes are made.
+        run:
+          git diff --quiet
+          if [ $? -eq 1 ]; then
+            git config --local user.email "github-actions[bot]@users.noreply.github.com"
+            git config --local user.name "github-actions[bot]"
+            git commit -am "Update Lines of Code."
+            git push https://${{secrets.GITHUB_TOKEN}}@github.com/UniformSoup/Adore.git
+          else
+            echo "No changes detected, skipping commit and push."
+          fi
           git commit -am "Update Lines of Code."
           git push https://${{secrets.GITHUB_TOKEN}}@github.com/UniformSoup/Adore.git
