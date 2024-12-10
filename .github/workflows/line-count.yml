@@ -22,7 +22,7 @@ jobs:
                     | xargs wc -l | awk '{total += $1} END {print total}')
           sed -i "s/Total lines of C++ code:.*/Total lines of C++ code: $cpplines/" README.md
           sed -i "s/Total lines of CMake code:.*/Total lines of CMake code: $cmakelines/" README.md
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config user.name "github-actions[bot]"
           git commit -am "Update Lines of Code."
-          git push https://${{ secrets.GITHUB_TOKEN }}@github.com/UniformSoup/Adore.git
+          git push https://${GITHUB_TOKEN}@github.com/UniformSoup/Adore.git
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
