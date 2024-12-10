@@ -28,4 +28,16 @@ namespace Adore
                 throw AdoreException("Unsupported API.");
         }
     }
+
+    std::shared_ptr<UniformBuffer> UniformBuffer::create(std::shared_ptr<Renderer>& renderer,
+                                                     void* pdata, uint64_t const& size)
+    {
+        switch (renderer->window()->context()->api)
+        {
+            case API::Vulkan:
+                return std::make_shared<VulkanUniformBuffer>(renderer, pdata, size);
+            default:
+                throw AdoreException("Unsupported API.");
+        }
+    }
 }

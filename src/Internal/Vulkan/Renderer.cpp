@@ -4,7 +4,7 @@
 #include <Adore/Internal/Vulkan/Shader.hpp>
 #include <Adore/Internal/Vulkan/Buffer.hpp>
 
-constexpr int FRAMES_IN_FLIGHT = 2;
+#include <Adore/Internal/FramesInFlight.hpp>
 
 VulkanRenderer::VulkanRenderer(std::shared_ptr<Adore::Window>& win)
     : Adore::Renderer(win)
@@ -107,6 +107,12 @@ void VulkanRenderer::begin(std::shared_ptr<Adore::Shader>& shader)
     vkCmdBeginRenderPass(m_commandBuffers[m_currentFrame], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     vkCmdBindPipeline(m_commandBuffers[m_currentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS, pshader->pipeline());
+
+    vkCmdBindDescriptorSets(m_commandBuffers[m_currentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS, pshader->layout(),
+                            0, 1, &pshader->descriptorSets()[m_currentFrame], 0, nullptr);
+
+    for (auto& uniform : pshader->uniforms())
+        static_cast<VulkanUniformBuffer*>(uniform.get())->update(m_currentFrame);
 }
 
 void VulkanRenderer::draw(uint32_t const& count)
@@ -251,3 +257,15 @@ void VulkanRenderer::bind(std::shared_ptr<Adore::VertexBuffer>& buffer, uint32_t
                            &static_cast<VulkanVertexBuffer*>(buffer.get())->buffer(),
                            &offset);
 }
+
+// void VulkanRenderer::bind(std::shared_ptr<Adore::UniformBuffer>& buffer, uint32_t const& binding)
+// {
+//     if (buffer->renderer().get() != this)
+//         throw Adore::AdoreException("Vertex Buffer is not bound to this renderer.");
+
+//     VkDeviceSize offset = 0;
+
+//     vkCmdBindVertexBuffers(m_commandBuffers[m_currentFrame], binding, 1,
+//                            &static_cast<VulkanUniformBuffer*>(buffer.get())->buffer(m_currentFrame),
+//                            &offset);
+// }

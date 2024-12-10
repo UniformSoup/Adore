@@ -36,4 +36,24 @@ namespace Adore
                                               void* pdata, uint64_t const& size);
         virtual ~VertexBuffer() = default;
     };
+
+    class ADORE_EXPORT UniformBuffer : public Buffer
+    {
+    protected:
+        void * m_pUniformObject;
+        uint64_t const m_size;
+        UniformBuffer(std::shared_ptr<Renderer>& renderer, void const * pdata, uint64_t const& size)
+            : Buffer(renderer), m_size(size)
+        {
+            m_pUniformObject = malloc(size);
+            memcpy(m_pUniformObject, pdata, size);
+        };
+    public:
+        static std::shared_ptr<UniformBuffer> create(std::shared_ptr<Renderer>& renderer,
+                                                     void* pdata, uint64_t const& size);
+        virtual ~UniformBuffer() { free(m_pUniformObject); };
+        uint64_t const& size() { return m_size; }
+        void const * get() { return m_pUniformObject; }
+        virtual void set(void const * pdata) = 0;
+    };
 }

@@ -7,3 +7,7 @@ set(GLFW_USE_WAYLAND ON CACHE BOOL "Use wayland if available.")
 add_subdirectory(glfw)
 add_subdirectory(glm)
 target_include_directories(glm INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_definitions(glm PRIVATE GLM_FORCE_RADIANS
+                                       GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
+                                       GLM_FORCE_INTRINSICS
+                                       GLM_FORCE_SWIZZLE)

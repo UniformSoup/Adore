@@ -16,6 +16,7 @@ namespace Adore
         virtual ~Renderer() = default;
         virtual void begin(std::shared_ptr<Shader>& shader) = 0;
         virtual void bind(std::shared_ptr<VertexBuffer>& buffer, uint32_t const& binding) = 0;
+        // virtual void bind(std::shared_ptr<UniformBuffer>& buffer, uint32_t const& binding) = 0;
         virtual void bind(std::shared_ptr<IndexBuffer>& buffer) = 0;
         virtual void draw(uint32_t const& count) = 0;
         virtual void drawIndexed(uint32_t const& count) = 0;

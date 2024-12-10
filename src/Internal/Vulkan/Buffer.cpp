@@ -124,3 +124,57 @@ VulkanVertexBuffer::~VulkanVertexBuffer()
     vkDestroyBuffer(pwindow->device(), m_buffer, nullptr);
     vkFreeMemory(pwindow->device(), m_memory, nullptr);
 }
+
+VulkanUniformBuffer::VulkanUniformBuffer(std::shared_ptr<Adore::Renderer>& renderer,
+                        void* pdata, uint64_t const& size)
+    : Adore::UniformBuffer(renderer, pdata, size)
+{
+    VulkanWindow * pwindow = static_cast<VulkanWindow*>(m_renderer->window().get());
+
+    m_changed.resize(FRAMES_IN_FLIGHT, false);
+    m_buffers.resize(FRAMES_IN_FLIGHT);
+    m_memories.resize(FRAMES_IN_FLIGHT);
+    m_maps.resize(FRAMES_IN_FLIGHT);
+
+    for (unsigned int i = 0; i < FRAMES_IN_FLIGHT; i++)
+    {
+        createBuffer(pwindow->device(), pwindow->physicalDevice(), size,
+                     VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                     m_buffers[i], m_memories[i]);
+        vkMapMemory(pwindow->device(), m_memories[i], 0, size, 0, &m_maps[i]);
+        memcpy(m_maps[i], pdata, size);
+    }
+
+}
+
+void VulkanUniformBuffer::set(void const * pdata)
+{
+    for (unsigned int i = 0; i < FRAMES_IN_FLIGHT; i++)
+        m_changed[i] = true;
+    memcpy(m_pUniformObject, pdata, m_size);
+}
+
+VulkanUniformBuffer::~VulkanUniformBuffer()
+{
+    VulkanWindow * pwindow = static_cast<VulkanWindow*>(m_renderer->window().get());
+    for (unsigned int i = 0; i < FRAMES_IN_FLIGHT; i++)
+    {
+        vkDestroyBuffer(pwindow->device(), m_buffers[i], nullptr);
+        vkFreeMemory(pwindow->device(), m_memories[i], nullptr);
+    }
+}
+
+void VulkanUniformBuffer::update(size_t const& index)
+{
+    if (m_changed[index])
+    {
+        memcpy(m_maps[index], m_pUniformObject, m_size);
+        m_changed[index] = false;
+    }
+}
+
+VkBuffer VulkanUniformBuffer::buffer(size_t const& index)
+{
+    return m_buffers[index];
+}

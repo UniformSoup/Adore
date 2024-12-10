@@ -7,6 +7,7 @@ Total lines of CMake code: 256
 ## <center>TODO:</center>
 
 The renderer should manage descriptor pools.
+Vertex Buffers should contain a binding to make rendering cleaner.
 
 Next:
  - Uniforms / Push Constants.
@@ -31,6 +32,7 @@ Next:
  - Use AMD's vulkan memory allocator (VMA) instead of manual memory allocation.
 
  - Physics (Box2D? Bullet?)
+ - c_vars
  - ECS (maybe SECS or EnTT)
 
  - RENDERER TAKES WINDOW, SHADER TAKES WINDOW HOW TO BE SURE THE WINDOW IS THE SAME?

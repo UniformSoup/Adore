@@ -1,6 +1,9 @@
 #include <Adore/Internal/Vulkan/Shader.hpp>
 #include <Adore/Internal/Vulkan/Renderer.hpp>
 #include <Adore/Internal/Log.hpp>
+#include <Adore/Internal/FramesInFlight.hpp>
+#include <Adore/Internal/Vulkan/Buffer.hpp>
+
 #include <fstream>
 
 std::vector<uint32_t> read(std::string const& path)
@@ -28,52 +31,130 @@ VkShaderModule shader(VkDevice const& device, std::vector<uint32_t> const& code)
     return module;
 }
 
-VkShaderStageFlagBits stage(Adore::Shader::Type const& type)
+VkShaderStageFlagBits stage(Adore::ShaderType const& type)
 {
     switch (type)
     {
-        case Adore::Shader::Type::VERTEX: return VK_SHADER_STAGE_VERTEX_BIT;
-        case Adore::Shader::Type::FRAGMENT: return VK_SHADER_STAGE_FRAGMENT_BIT;
+        case Adore::ShaderType::VERTEX: return VK_SHADER_STAGE_VERTEX_BIT;
+        case Adore::ShaderType::FRAGMENT: return VK_SHADER_STAGE_FRAGMENT_BIT;
     }
 }
 
-VkFormat format(Adore::Shader::InputDescriptor::Format const& type)
+VkFormat format(Adore::AttributeFormat const& type)
 {
-    typedef Adore::Shader::InputDescriptor::Format ShaderFormat;
     switch (type)
     {
-        case ShaderFormat::FLOAT:       return VK_FORMAT_R32_SFLOAT;
-        case ShaderFormat::VEC2_FLOAT:  return VK_FORMAT_R32G32_SFLOAT;
-        case ShaderFormat::VEC3_FLOAT:  return VK_FORMAT_R32G32B32_SFLOAT;
-        case ShaderFormat::VEC4_FLOAT:  return VK_FORMAT_R32G32B32A32_SFLOAT;
-        case ShaderFormat::INT:         return VK_FORMAT_R32_SINT;
-        case ShaderFormat::VEC2_INT:    return VK_FORMAT_R32G32_SINT;
-        case ShaderFormat::VEC3_INT:    return VK_FORMAT_R32G32B32_SINT;
-        case ShaderFormat::VEC4_INT:    return VK_FORMAT_R32G32B32A32_SINT;
-        case ShaderFormat::UINT:        return VK_FORMAT_R32_UINT;
-        case ShaderFormat::VEC2_UINT:   return VK_FORMAT_R32G32_UINT;
-        case ShaderFormat::VEC3_UINT:   return VK_FORMAT_R32G32B32_UINT;
-        case ShaderFormat::VEC4_UINT:   return VK_FORMAT_R32G32B32A32_UINT;
-        case ShaderFormat::DOUBLE:      return VK_FORMAT_R64_SFLOAT;
-        case ShaderFormat::VEC2_DOUBLE: return VK_FORMAT_R64G64_SFLOAT;
-        case ShaderFormat::VEC3_DOUBLE: return VK_FORMAT_R64G64B64_SFLOAT;
-        case ShaderFormat::VEC4_DOUBLE: return VK_FORMAT_R64G64B64A64_SFLOAT;
+        case Adore::AttributeFormat::FLOAT:       return VK_FORMAT_R32_SFLOAT;
+        case Adore::AttributeFormat::VEC2_FLOAT:  return VK_FORMAT_R32G32_SFLOAT;
+        case Adore::AttributeFormat::VEC3_FLOAT:  return VK_FORMAT_R32G32B32_SFLOAT;
+        case Adore::AttributeFormat::VEC4_FLOAT:  return VK_FORMAT_R32G32B32A32_SFLOAT;
+        case Adore::AttributeFormat::INT:         return VK_FORMAT_R32_SINT;
+        case Adore::AttributeFormat::VEC2_INT:    return VK_FORMAT_R32G32_SINT;
+        case Adore::AttributeFormat::VEC3_INT:    return VK_FORMAT_R32G32B32_SINT;
+        case Adore::AttributeFormat::VEC4_INT:    return VK_FORMAT_R32G32B32A32_SINT;
+        case Adore::AttributeFormat::UINT:        return VK_FORMAT_R32_UINT;
+        case Adore::AttributeFormat::VEC2_UINT:   return VK_FORMAT_R32G32_UINT;
+        case Adore::AttributeFormat::VEC3_UINT:   return VK_FORMAT_R32G32B32_UINT;
+        case Adore::AttributeFormat::VEC4_UINT:   return VK_FORMAT_R32G32B32A32_UINT;
+        case Adore::AttributeFormat::DOUBLE:      return VK_FORMAT_R64_SFLOAT;
+        case Adore::AttributeFormat::VEC2_DOUBLE: return VK_FORMAT_R64G64_SFLOAT;
+        case Adore::AttributeFormat::VEC3_DOUBLE: return VK_FORMAT_R64G64B64_SFLOAT;
+        case Adore::AttributeFormat::VEC4_DOUBLE: return VK_FORMAT_R64G64B64A64_SFLOAT;
     }
 }
 
 VulkanShader::VulkanShader(std::shared_ptr<Adore::Window>& win,
-                std::vector<Adore::Shader::Module> const& modules,
-                Adore::Shader::InputDescriptor const& descriptor)
-    : Adore::Shader(win, descriptor)
+                std::vector<Adore::ShaderModule> const& modules,
+                Adore::LayoutDescriptor const& descriptor,
+                std::vector<std::shared_ptr<Adore::UniformBuffer>> const& uniformBuffers)
+    : Adore::Shader(win, descriptor, uniformBuffers)
 {
     VulkanWindow* pwindow = static_cast<VulkanWindow*>(m_win.get());
 
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo;
+    std::vector<VkDescriptorSetLayoutBinding> uniformDescriptions(m_descriptor.uniforms.size());
+
+    for (unsigned int i = 0; i < m_descriptor.uniforms.size(); i++)
+    {
+        uniformDescriptions[i].binding = m_descriptor.uniforms[i].binding;
+        uniformDescriptions[i].descriptorType = (m_descriptor.uniforms[i].type == Adore::UniformType::BUFFER)
+                            ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        uniformDescriptions[i].descriptorCount = m_descriptor.uniforms[i].count;
+        uniformDescriptions[i].stageFlags = stage(m_descriptor.uniforms[i].stage);
+        uniformDescriptions[i].pImmutableSamplers = nullptr;
+    }
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo {};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = uniformDescriptions.size();
+    layoutInfo.pBindings = uniformDescriptions.data();
+
+    if (vkCreateDescriptorSetLayout(pwindow->device(), &layoutInfo, nullptr, &m_descriptorSetLayout) != VK_SUCCESS)
+        throw Adore::AdoreException("Failed to create Vulkan descriptor set layout.");
+
+    std::vector<VkDescriptorPoolSize> poolSizes(m_descriptor.uniforms.size());
+
+    for (unsigned int i = 0; i < m_descriptor.uniforms.size(); i++)
+    {
+        poolSizes[i].type = (m_descriptor.uniforms[i].type == Adore::UniformType::BUFFER)
+                            ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        poolSizes[i].descriptorCount = FRAMES_IN_FLIGHT;
+    }
+
+    VkDescriptorPoolCreateInfo poolInfo {};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = poolSizes.size();
+    poolInfo.pPoolSizes = poolSizes.data();
+    poolInfo.maxSets = FRAMES_IN_FLIGHT;
+
+    if (vkCreateDescriptorPool(pwindow->device(), &poolInfo, nullptr, &m_descriptorPool) != VK_SUCCESS)
+        throw Adore::AdoreException("Failed to create Vulkan descriptor pool.");
+
+    std::vector<VkDescriptorSetLayout> layouts(FRAMES_IN_FLIGHT, m_descriptorSetLayout);
+
+    VkDescriptorSetAllocateInfo allocInfo {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = m_descriptorPool;
+    allocInfo.descriptorSetCount = FRAMES_IN_FLIGHT;
+    allocInfo.pSetLayouts = layouts.data();
+
+    m_descriptorSets.resize(FRAMES_IN_FLIGHT);
+
+    if (vkAllocateDescriptorSets(pwindow->device(), &allocInfo, m_descriptorSets.data()) != VK_SUCCESS)
+        throw Adore::AdoreException("Failed to allocate Vulkan descriptor sets.");
+
+
+    std::vector<VkDescriptorBufferInfo> bufferInfos(m_descriptor.uniforms.size() * FRAMES_IN_FLIGHT);
+    std::vector<VkWriteDescriptorSet> writes(m_descriptor.uniforms.size() * FRAMES_IN_FLIGHT);
+
+    for (unsigned int i = 0; i < uniformBuffers.size(); i++)
+    {
+        for (unsigned int j = 0; j < FRAMES_IN_FLIGHT; j++)
+        {
+            bufferInfos[i * FRAMES_IN_FLIGHT + j].buffer = static_cast<VulkanUniformBuffer*>(uniformBuffers[i].get())->buffer(j);
+            bufferInfos[i * FRAMES_IN_FLIGHT + j].offset = 0;
+            bufferInfos[i * FRAMES_IN_FLIGHT + j].range = VK_WHOLE_SIZE;
+
+            writes[i * FRAMES_IN_FLIGHT + j].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writes[i * FRAMES_IN_FLIGHT + j].dstSet = m_descriptorSets[j];
+            writes[i * FRAMES_IN_FLIGHT + j].dstBinding = m_descriptor.uniforms[i].binding;
+            writes[i * FRAMES_IN_FLIGHT + j].dstArrayElement = 0;
+            writes[i * FRAMES_IN_FLIGHT + j].descriptorCount = 1;
+            writes[i * FRAMES_IN_FLIGHT + j].descriptorType = (m_descriptor.uniforms[i].type == Adore::UniformType::BUFFER)
+                                ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            writes[i * FRAMES_IN_FLIGHT + j].pBufferInfo = &bufferInfos[i * FRAMES_IN_FLIGHT + j];
+            writes[i * FRAMES_IN_FLIGHT + j].pImageInfo = nullptr;
+            writes[i * FRAMES_IN_FLIGHT + j].pTexelBufferView = nullptr;
+        }
+    }
+
+    vkUpdateDescriptorSets(pwindow->device(), writes.size(), writes.data(), 0, nullptr);
+
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo {};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.pNext = nullptr;
     pipelineLayoutInfo.flags = 0;
-    pipelineLayoutInfo.setLayoutCount = 0;
-    pipelineLayoutInfo.pSetLayouts = nullptr;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &m_descriptorSetLayout;
     pipelineLayoutInfo.pushConstantRangeCount = 0;
     pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
@@ -99,8 +180,8 @@ VulkanShader::VulkanShader(std::shared_ptr<Adore::Window>& win,
     dynamicStateInfo.dynamicStateCount = dynamicStates.size();
     dynamicStateInfo.pDynamicStates = dynamicStates.data();
 
-    std::vector<VkVertexInputBindingDescription> bindingDescriptions(m_descriptor.bindings.size());
     std::vector<VkVertexInputAttributeDescription> attributeDescriptions(m_descriptor.attributes.size());
+    std::vector<VkVertexInputBindingDescription> bindingDescriptions(m_descriptor.bindings.size());
 
     for (unsigned int i = 0; i < m_descriptor.bindings.size(); i++)
     {
@@ -237,4 +318,6 @@ VulkanShader::~VulkanShader()
     vkQueueWaitIdle(window->queues().graphics);
     vkDestroyPipeline(window->device(), m_pipeline, nullptr);
     vkDestroyPipelineLayout(window->device(), m_pipelineLayout, nullptr);
+    vkDestroyDescriptorPool(window->device(), m_descriptorPool, nullptr);
+    vkDestroyDescriptorSetLayout(window->device(), m_descriptorSetLayout, nullptr);
 }
