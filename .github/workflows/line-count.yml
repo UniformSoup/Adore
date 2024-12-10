@@ -25,6 +25,4 @@ jobs:
           sed -i "s/Total lines of C++ code:.*/Total lines of C++ code: $cpplines/" README.md
           sed -i "s/Total lines of CMake code:.*/Total lines of CMake code: $cmakelines/" README.md
           git commit -am "Update Lines of Code."
-          git push https://${GITHUB_TOKEN}@github.com/UniformSoup/Adore.git
-        env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          git push https://${{secrets.GITHUB_TOKEN}}@github.com/UniformSoup/Adore.git
