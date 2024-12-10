@@ -22,20 +22,10 @@ jobs:
                     | xargs wc -l | awk '{total += $1} END {print total}')
           sed -i "s/Total lines of C++ code:.*/Total lines of C++ code: $cpplines/" README.md
           sed -i "s/Total lines of CMake code:.*/Total lines of CMake code: $cmakelines/" README.md
-
-      - name: Check for changes...
-        run: |
-            if git diff --quiet; then
-                echo "changes_exist=true" >> $GITHUB_ENV
-            else
-                echo "changes_exist=false" >> $GITHUB_ENV
-            fi
-      
-      - name: Push.
-        if: env.changes_exist == 'true'
-        run:
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add README.md
-          git commit -am "Update Lines of Code."
-          git push https://${{secrets.GITHUB_TOKEN}}@github.com/UniformSoup/Adore.git
+          if git diff --quiet; then
+            git config --local user.email "github-actions[bot]@users.noreply.github.com"
+            git config --local user.name "github-actions[bot]"
+            git add README.md
+            git commit -am "Update Lines of Code."
+            git push https://${{secrets.GITHUB_TOKEN}}@github.com/UniformSoup/Adore.git
+          fi
