@@ -25,7 +25,7 @@ jobs:
 
       - name: Check for changes...
         run: |
-            if ! git diff --quiet; then
+            if git diff --quiet; then
                 echo "changes_exist=true" >> $GITHUB_ENV
             else
                 echo "changes_exist=false" >> $GITHUB_ENV
