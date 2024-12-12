@@ -98,7 +98,7 @@ void transitionImageLayout(VulkanRenderer * prenderer, VkImage const& image, VkI
     barrier.image = image;
     barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
 
-    VkPipelineStageFlags srcStage, dstStage;
+    VkPipelineStageFlags srcStage = 0, dstStage = 0;
 
     if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
     {
