@@ -185,6 +185,7 @@ VulkanWindow::VulkanWindow(std::shared_ptr<Adore::Context>& ctx, std::string con
     }
 
     VkPhysicalDeviceFeatures deviceFeatures {};
+    deviceFeatures.samplerAnisotropy = VK_TRUE;
 
     std::vector<char const*> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 

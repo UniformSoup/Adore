@@ -56,4 +56,29 @@ namespace Adore
         void const * get() { return m_pUniformObject; }
         virtual void set(void const * pdata) = 0;
     };
+
+    enum class Filter
+    {
+        LINEAR,
+        NEAREST
+    };
+
+    enum class Wrap
+    {
+        REPEAT,
+        MIRRORED_REPEAT,
+        CLAMP_TO_EDGE,
+        CLAMP_TO_BORDER
+    };
+
+    class ADORE_EXPORT Sampler : public Buffer
+    {
+    protected:
+        Sampler(std::shared_ptr<Renderer>& renderer) : Buffer(renderer) {};
+    public:
+        static std::shared_ptr<Sampler> create(std::shared_ptr<Adore::Renderer>& renderer,
+                                               const char* path, Filter const& filter,
+                                               Wrap const& wrap);
+        virtual ~Sampler() = default;
+    };
 }

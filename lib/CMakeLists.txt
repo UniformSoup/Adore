@@ -11,3 +11,6 @@ target_compile_definitions(glm PRIVATE GLM_FORCE_RADIANS
                                        GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
                                        GLM_FORCE_INTRINSICS
                                        GLM_FORCE_SWIZZLE)
+
+add_library(stb STATIC stb_impl.cpp ${CMAKE_CURRENT_SOURCE_DIR}/stb/stb_image.h)
+target_include_directories(stb PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/stb)

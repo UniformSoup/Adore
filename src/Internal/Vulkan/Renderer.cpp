@@ -112,7 +112,7 @@ void VulkanRenderer::begin(std::shared_ptr<Adore::Shader>& shader)
                             0, 1, &pshader->descriptorSets()[m_currentFrame], 0, nullptr);
 
     for (auto& uniform : pshader->uniforms())
-        static_cast<VulkanUniformBuffer*>(uniform.get())->update(m_currentFrame);
+        static_cast<VulkanUniformBuffer*>(uniform.resource.get())->update(m_currentFrame);
 }
 
 void VulkanRenderer::draw(uint32_t const& count)
@@ -196,9 +196,10 @@ void VulkanRenderer::end()
     m_currentFrame = (m_currentFrame + 1) % FRAMES_IN_FLIGHT;
 }
 
-void VulkanRenderer::copy(VkBuffer const& src, VkBuffer const& dst, uint64_t const& size)
+VkCommandBuffer VulkanRenderer::beginCommandBuffer()
 {
     VulkanWindow* pwindow = static_cast<VulkanWindow*>(m_win.get());
+
     VkCommandBufferAllocateInfo allocInfo {};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocInfo.commandPool = m_commandPool;
@@ -214,13 +215,13 @@ void VulkanRenderer::copy(VkBuffer const& src, VkBuffer const& dst, uint64_t con
     
     if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
         throw Adore::AdoreException("Failed to begin Vulkan command buffer.");
+    
+    return commandBuffer;
+}
 
-    VkBufferCopy copyRegion {};
-    copyRegion.srcOffset = 0;
-    copyRegion.dstOffset = 0;
-    copyRegion.size = size;
-
-    vkCmdCopyBuffer(commandBuffer, src, dst, 1, &copyRegion);
+void VulkanRenderer::endCommandBuffer(VkCommandBuffer const& commandBuffer)
+{
+    VulkanWindow* pwindow = static_cast<VulkanWindow*>(m_win.get());
 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
         throw Adore::AdoreException("Failed to end Vulkan command buffer.");
@@ -257,15 +258,3 @@ void VulkanRenderer::bind(std::shared_ptr<Adore::VertexBuffer>& buffer, uint32_t
                            &static_cast<VulkanVertexBuffer*>(buffer.get())->buffer(),
                            &offset);
 }
-
-// void VulkanRenderer::bind(std::shared_ptr<Adore::UniformBuffer>& buffer, uint32_t const& binding)
-// {
-//     if (buffer->renderer().get() != this)
-//         throw Adore::AdoreException("Vertex Buffer is not bound to this renderer.");
-
-//     VkDeviceSize offset = 0;
-
-//     vkCmdBindVertexBuffers(m_commandBuffers[m_currentFrame], binding, 1,
-//                            &static_cast<VulkanUniformBuffer*>(buffer.get())->buffer(m_currentFrame),
-//                            &offset);
-// }

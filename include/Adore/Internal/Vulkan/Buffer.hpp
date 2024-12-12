@@ -48,3 +48,17 @@ public:
 
     ~VulkanUniformBuffer();
 };
+
+class VulkanSampler : public Adore::Sampler
+{
+    VkImage m_image;
+    VkDeviceMemory m_memory;
+    VkImageView m_view;
+    VkSampler m_sampler;
+public:
+    VulkanSampler(std::shared_ptr<Adore::Renderer>& renderer, const char* path,
+                  Adore::Filter const& filter, Adore::Wrap const& wrap);
+    ~VulkanSampler();
+    VkImageView const& view() const { return m_view; }
+    VkSampler const& sampler() const { return m_sampler; }
+};

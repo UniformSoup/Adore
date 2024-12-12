@@ -5,6 +5,7 @@
 
 #include <vulkan/vulkan.h>
 
+
 class VulkanShader : public Adore::Shader
 {
     VkDescriptorPool m_descriptorPool;
@@ -15,10 +16,14 @@ class VulkanShader : public Adore::Shader
 public:
     VulkanShader(std::shared_ptr<Adore::Window>& win,
                 std::vector<Adore::ShaderModule> const& modules,
-                Adore::LayoutDescriptor const& descriptor,
-                std::vector<std::shared_ptr<Adore::UniformBuffer>> const& uniformBuffers);
+                Adore::LayoutDescriptor const& descriptor);
     ~VulkanShader();
+    void attach(std::shared_ptr<Adore::UniformBuffer>& buffer, uint32_t const& binding);
+    void attach(std::shared_ptr<Adore::Sampler>& buffer, uint32_t const& binding);
     VkPipeline const& pipeline() const { return m_pipeline; };
     std::vector<VkDescriptorSet> const& descriptorSets() const { return m_descriptorSets; };
-    VkPipelineLayout const& layout() const { return m_pipelineLayout; };
+    VkPipelineLayout const& layout() const
+    {
+        return m_pipelineLayout;
+    };
 };

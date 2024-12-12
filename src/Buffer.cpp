@@ -40,4 +40,17 @@ namespace Adore
                 throw AdoreException("Unsupported API.");
         }
     }
+
+    std::shared_ptr<Sampler> Sampler::create(std::shared_ptr<Adore::Renderer>& renderer,
+                                               const char* path, Filter const& filter,
+                                               Wrap const& wrap)
+    {
+        switch (renderer->window()->context()->api)
+        {
+            case API::Vulkan:
+                return std::make_shared<VulkanSampler>(renderer, path, filter, wrap);
+            default:
+                throw AdoreException("Unsupported API.");
+        }
+    }
 }

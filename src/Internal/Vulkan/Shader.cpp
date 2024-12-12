@@ -65,21 +65,20 @@ VkFormat format(Adore::AttributeFormat const& type)
 
 VulkanShader::VulkanShader(std::shared_ptr<Adore::Window>& win,
                 std::vector<Adore::ShaderModule> const& modules,
-                Adore::LayoutDescriptor const& descriptor,
-                std::vector<std::shared_ptr<Adore::UniformBuffer>> const& uniformBuffers)
-    : Adore::Shader(win, descriptor, uniformBuffers)
+                Adore::LayoutDescriptor const& descriptor)
+    : Adore::Shader(win, descriptor)
 {
     VulkanWindow* pwindow = static_cast<VulkanWindow*>(m_win.get());
 
-    std::vector<VkDescriptorSetLayoutBinding> uniformDescriptions(m_descriptor.uniforms.size());
+    std::vector<VkDescriptorSetLayoutBinding> uniformDescriptions(m_descriptor.resources.size());
 
-    for (unsigned int i = 0; i < m_descriptor.uniforms.size(); i++)
+    for (unsigned int i = 0; i < m_descriptor.resources.size(); i++)
     {
-        uniformDescriptions[i].binding = m_descriptor.uniforms[i].binding;
-        uniformDescriptions[i].descriptorType = (m_descriptor.uniforms[i].type == Adore::UniformType::BUFFER)
+        uniformDescriptions[i].binding = m_descriptor.resources[i].binding;
+        uniformDescriptions[i].descriptorType = (m_descriptor.resources[i].type == Adore::ResourceType::BUFFER)
                             ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        uniformDescriptions[i].descriptorCount = m_descriptor.uniforms[i].count;
-        uniformDescriptions[i].stageFlags = stage(m_descriptor.uniforms[i].stage);
+        uniformDescriptions[i].descriptorCount = m_descriptor.resources[i].count;
+        uniformDescriptions[i].stageFlags = stage(m_descriptor.resources[i].stage);
         uniformDescriptions[i].pImmutableSamplers = nullptr;
     }
 
@@ -91,13 +90,15 @@ VulkanShader::VulkanShader(std::shared_ptr<Adore::Window>& win,
     if (vkCreateDescriptorSetLayout(pwindow->device(), &layoutInfo, nullptr, &m_descriptorSetLayout) != VK_SUCCESS)
         throw Adore::AdoreException("Failed to create Vulkan descriptor set layout.");
 
-    std::vector<VkDescriptorPoolSize> poolSizes(m_descriptor.uniforms.size());
+    std::vector<VkDescriptorPoolSize> poolSizes(m_descriptor.resources.size());
 
-    for (unsigned int i = 0; i < m_descriptor.uniforms.size(); i++)
+    for (unsigned int i = 0; i < m_descriptor.resources.size(); i++)
     {
-        poolSizes[i].type = (m_descriptor.uniforms[i].type == Adore::UniformType::BUFFER)
-                            ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         poolSizes[i].descriptorCount = FRAMES_IN_FLIGHT;
+        if (m_descriptor.resources[i].type == Adore::ResourceType::BUFFER)
+            poolSizes[i].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        else
+            poolSizes[i].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     }
 
     VkDescriptorPoolCreateInfo poolInfo {};
@@ -121,33 +122,6 @@ VulkanShader::VulkanShader(std::shared_ptr<Adore::Window>& win,
 
     if (vkAllocateDescriptorSets(pwindow->device(), &allocInfo, m_descriptorSets.data()) != VK_SUCCESS)
         throw Adore::AdoreException("Failed to allocate Vulkan descriptor sets.");
-
-
-    std::vector<VkDescriptorBufferInfo> bufferInfos(m_descriptor.uniforms.size() * FRAMES_IN_FLIGHT);
-    std::vector<VkWriteDescriptorSet> writes(m_descriptor.uniforms.size() * FRAMES_IN_FLIGHT);
-
-    for (unsigned int i = 0; i < uniformBuffers.size(); i++)
-    {
-        for (unsigned int j = 0; j < FRAMES_IN_FLIGHT; j++)
-        {
-            bufferInfos[i * FRAMES_IN_FLIGHT + j].buffer = static_cast<VulkanUniformBuffer*>(uniformBuffers[i].get())->buffer(j);
-            bufferInfos[i * FRAMES_IN_FLIGHT + j].offset = 0;
-            bufferInfos[i * FRAMES_IN_FLIGHT + j].range = VK_WHOLE_SIZE;
-
-            writes[i * FRAMES_IN_FLIGHT + j].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            writes[i * FRAMES_IN_FLIGHT + j].dstSet = m_descriptorSets[j];
-            writes[i * FRAMES_IN_FLIGHT + j].dstBinding = m_descriptor.uniforms[i].binding;
-            writes[i * FRAMES_IN_FLIGHT + j].dstArrayElement = 0;
-            writes[i * FRAMES_IN_FLIGHT + j].descriptorCount = 1;
-            writes[i * FRAMES_IN_FLIGHT + j].descriptorType = (m_descriptor.uniforms[i].type == Adore::UniformType::BUFFER)
-                                ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            writes[i * FRAMES_IN_FLIGHT + j].pBufferInfo = &bufferInfos[i * FRAMES_IN_FLIGHT + j];
-            writes[i * FRAMES_IN_FLIGHT + j].pImageInfo = nullptr;
-            writes[i * FRAMES_IN_FLIGHT + j].pTexelBufferView = nullptr;
-        }
-    }
-
-    vkUpdateDescriptorSets(pwindow->device(), writes.size(), writes.data(), 0, nullptr);
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo {};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -320,4 +294,100 @@ VulkanShader::~VulkanShader()
     vkDestroyPipelineLayout(window->device(), m_pipelineLayout, nullptr);
     vkDestroyDescriptorPool(window->device(), m_descriptorPool, nullptr);
     vkDestroyDescriptorSetLayout(window->device(), m_descriptorSetLayout, nullptr);
+}
+
+void VulkanShader::attach(std::shared_ptr<Adore::UniformBuffer>& buffer, uint32_t const& binding)
+{
+    VulkanWindow * pwindow = static_cast<VulkanWindow*>(m_win.get());
+
+    auto descriptor_it = std::find_if
+    (
+                    m_descriptor.resources.begin(), m_descriptor.resources.end(),
+                    [binding](auto const& resource) 
+                    { 
+                        return resource.binding == binding 
+                        && resource.type == Adore::ResourceType::BUFFER;
+                    }
+    );
+
+    if (descriptor_it == m_descriptor.resources.end())
+        throw Adore::AdoreException("No uniform buffer with binding " + std::to_string(binding) + " found in shader.");
+
+    auto uniforms_it = std::find_if(m_uniforms.begin(), m_uniforms.end(),
+        [binding](auto const& uniform) { return uniform.binding == binding; });
+
+    if (uniforms_it != m_uniforms.end())
+        m_uniforms.erase(uniforms_it);
+    
+    m_uniforms.push_back({binding, buffer});
+
+    std::vector<VkDescriptorBufferInfo> bufferInfos(FRAMES_IN_FLIGHT);
+    std::vector<VkWriteDescriptorSet> writes(FRAMES_IN_FLIGHT);
+
+    for (unsigned int i = 0; i < FRAMES_IN_FLIGHT; i++)
+    {
+        bufferInfos[i].buffer =
+            static_cast<VulkanUniformBuffer*>(buffer.get())->buffer(i);
+        bufferInfos[i].offset = 0;
+        bufferInfos[i].range = VK_WHOLE_SIZE;
+
+        writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[i].dstSet = m_descriptorSets[i];
+        writes[i].dstBinding = binding;
+        writes[i].dstArrayElement = 0;
+        writes[i].descriptorCount = 1;
+        writes[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writes[i].pBufferInfo = &bufferInfos[i];
+        writes[i].pImageInfo = nullptr;
+        writes[i].pTexelBufferView = nullptr;
+    }
+
+    vkUpdateDescriptorSets(pwindow->device(), writes.size(), writes.data(), 0, nullptr);
+}
+
+void VulkanShader::attach(std::shared_ptr<Adore::Sampler>& sampler, uint32_t const& binding)
+{
+    VulkanWindow * pwindow = static_cast<VulkanWindow*>(m_win.get());
+
+    auto descriptor_it = std::find_if
+    (
+                    m_descriptor.resources.begin(), m_descriptor.resources.end(),
+                    [binding](auto const& resource) 
+                    { 
+                        return resource.binding == binding 
+                        && resource.type == Adore::ResourceType::SAMPLER;
+                    }
+    );
+
+    if (descriptor_it == m_descriptor.resources.end())
+        throw Adore::AdoreException("No sampler with binding " + std::to_string(binding) + " found in shader.");
+
+    auto samplers_it = std::find_if(m_samplers.begin(), m_samplers.end(),
+        [binding](auto const& s) { return s.binding == binding; });
+
+    if (samplers_it != m_samplers.end())
+        m_samplers.erase(samplers_it);
+    
+    m_samplers.push_back({binding, sampler});
+
+    VkDescriptorImageInfo imageInfo {};
+    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    imageInfo.imageView = static_cast<VulkanSampler*>(sampler.get())->view();
+    imageInfo.sampler = static_cast<VulkanSampler*>(sampler.get())->sampler();
+
+    std::vector<VkWriteDescriptorSet> writes(FRAMES_IN_FLIGHT);
+
+    for (unsigned int i = 0; i < FRAMES_IN_FLIGHT; i++)
+    {
+        writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[i].dstSet = m_descriptorSets[i];
+        writes[i].dstBinding = binding;
+        writes[i].dstArrayElement = 0;
+        writes[i].descriptorCount = 1;
+        writes[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        writes[i].pImageInfo = &imageInfo;
+        writes[i].pTexelBufferView = nullptr;
+    }
+
+    vkUpdateDescriptorSets(pwindow->device(), writes.size(), writes.data(), 0, nullptr);
 }
